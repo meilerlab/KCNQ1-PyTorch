@@ -13,8 +13,9 @@ I think some major outstanding issues are:
   - not normalizing the output data potentially leading to astronomical losses
   - syntax errors in the k-fold cross validation with generating the train and test splits for each fold
   - I didn't completely figure out the syntax for generating the model that is an average of all of the trained models in the k-fold cross validation
-
-* 231117
+  - 
+------------------------------------
+Update: 231117
 
 KCNQ1_script.py is updated python script, separate from KCNQ1.ipynb. 
 
