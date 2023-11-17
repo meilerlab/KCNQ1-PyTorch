@@ -13,3 +13,17 @@ I think some major outstanding issues are:
   - not normalizing the output data potentially leading to astronomical losses
   - syntax errors in the k-fold cross validation with generating the train and test splits for each fold
   - I didn't completely figure out the syntax for generating the model that is an average of all of the trained models in the k-fold cross validation
+
+* 231117
+
+KCNQ1_script.py is updated python script, separate from KCNQ1.ipynb. 
+
+- The basic architecture listed above is the same. 
+- K-fold cross-validation has been correctly implemented and the data has been normalized. 
+- The network does a binary prediction based on the cutoff values for normal/dysfunctional variant as listed in S. Phul 2022. Reference the github from this paper for training data. 
+- Inference is performed in a separate script using 23 "new" variants unseen by the network. 
+
+Outstanding issues: 
+
+- Update model architecture to predict one (benign/pathogenic) classification per variant. If any of the 4 electrophysiological outputs are classified as dysfunctional, then mutant overall is classified as pathogenic. 
+- Implement transfer learning, recycling 
