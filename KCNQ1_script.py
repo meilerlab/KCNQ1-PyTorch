@@ -9,10 +9,11 @@ Main changes: added a dataset object, added batch normalization during training
 
 * updates 20231102 to model_best_231101.py:
   - create trainAll() . copy of trainModel(), excluding validation part. 
-  - TODO: add in additional criteria that if peak curr density is <17%, all 4 biophys params are considered dysfunctional 
+- TODO: add in additional criteria that if peak curr density is <17%, all 4 biophys params are considered dysfunctional . may not be necessary for binary classification bc <17%, iks will be dysfunc, which means variant will be pathogenic. update - will skip this for now. 
 
 # IMPORTANT: if i change trainModel(), I'll need to update trainAll() !!! 
 # will also need to update model_inference.py if I update the training model here. 
+
 
 '''
 import matplotlib.pyplot as plt
@@ -27,9 +28,20 @@ import sklearn.metrics as skm
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.model_selection import train_test_split
 
+# to track run time
+from datetime import datetime
+
+##############################
+
+## Set parameters I may modify here 
+
+bSize=64
+
+##############################
+
 def binarizeTensor(intensor):
     ccrit = [0.55,1.15,1.30,0.80,1.70,0.70,0.75,1.25]
-    Ikscut = 0.17 # if peak I is < Ikscut, then all 4 outputs should be considered pathogenic 
+    Ikscut = 0.17 # if peak I is < Ikscut, then all 4 outputs should be considered pathogenic . may not be necessary 
 
     binTensor = torch.vstack((torch.logical_or(intensor[:,0] < ccrit[0], intensor[:,0] > ccrit[1]),
                               torch.logical_or(intensor[:,1] > ccrit[2], intensor[:,1] < ccrit[3]),
@@ -99,9 +111,10 @@ def trainModel(trainLoader,validLoader,device="cuda" if torch.cuda.is_available(
     device = torch.device("cpu")
     KCNQ = MODEL(hiddenNodes=32)
     KCNQ = KCNQ.to(device)
-    #loss_fn = nn.MSELoss()
+    #loss_fn = nn.MSELoss() # for non-binary 
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.Adam(KCNQ.parameters())
+    #optimizer = torch.optim.SGD(KCNQ.parameters(),lr=0.001)
     epoch=0
     losses = []
     nTruths = []
@@ -117,9 +130,6 @@ def trainModel(trainLoader,validLoader,device="cuda" if torch.cuda.is_available(
             binary = binary.to(device)
             optimizer.zero_grad()
             outputs=KCNQ(inputs) 
-            #print(torch.vstack((outputs,labels)))
-            #loss = loss_fn(outputs,labels)
-            #print(torch.vstack((outputs,binary)))
             loss = loss_fn(outputs,binary)
             loss.backward()
             optimizer.step()
@@ -135,19 +145,31 @@ def trainModel(trainLoader,validLoader,device="cuda" if torch.cuda.is_available(
             truths = np.empty((0,4))
             for inputs, labels, binary in validLoader:
                 inputs = inputs.to(device)
+                binary = binary.to(device)
                 outputs = KCNQ(inputs)
-                #print(torch.vstack((outputs.cpu(),binary)))
+                ## binary: 0=benign, 1=pathogenic 
                 binout = torch.round(outputs)
+                #binout=binarizeTensor(outputs.cpu())
+                #print("binarize outputs:",binout) 
+                #quit()
+                
                 preds = np.vstack((preds,binout.cpu().numpy()))
                 truths = np.vstack((truths,binary.numpy()))
-            mcc = np.array([skm.matthews_corrcoef(truths[:,i],preds[:,i]) for i in range(preds.shape[1])])    
-            mccs = np.vstack((mccs,mcc))
-            match = np.equal(preds,truths)
-            nTruths.append(np.sum(match)/match.size)
-            KCNQ.train() # set back to training mode 
+                
+            # end for inputs, labels.. in validLoader
+        
+
+        mcc = np.array([skm.matthews_corrcoef(truths[:,i],preds[:,i]) for i in range(preds.shape[1])])    
+        mccs = np.vstack((mccs,mcc))
+        match = np.equal(preds,truths)
+        nTruths.append(np.sum(match)/match.size)
+        KCNQ.train() # set back to training mode 
 
         print(f"Epoch {epoch}: Loss={losses[-1]} %Match={nTruths[-1]} MCC1={mccs[-1,0]} MCC2={mccs[-1,1]} MCC3={mccs[-1,2]} MCC4={mccs[-1,3]}")
-        
+
+# end trainModel() 
+
+
 def trainAll(dataset,fsave,device="cuda" if torch.cuda.is_available() else "cpu"):
     # Train based on all data. Use this to save model for inference.
     # This should be exactly the same as the first part of trainModel()
@@ -157,10 +179,14 @@ def trainAll(dataset,fsave,device="cuda" if torch.cuda.is_available() else "cpu"
     KCNQ = KCNQ.to(device)
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.Adam(KCNQ.parameters())
+    #optimizer = torch.optim.SGD(KCNQ.parameters(),lr=0.0001)
     epoch=0
     losses = []
     nTruths = []
-    mccs = np.empty((0,4))
+
+    preds = np.empty((0,4))
+    truths=np.empty((0,4))
+
     KCNQ.train()
     nEpochs = 1200
     while epoch < nEpochs: 
@@ -176,11 +202,22 @@ def trainAll(dataset,fsave,device="cuda" if torch.cuda.is_available() else "cpu"
             loss.backward()
             optimizer.step()
             totalLoss += loss.item()
+
+            ##
+            # track matches
+            binout=torch.round(outputs)
+            preds=np.vstack((preds,binout.cpu().detach().numpy()))
+            truths=np.vstack((truths,binary.detach().numpy()))
+
         epoch+=1 
         losses.append(totalLoss)
+        match = np.equal(preds,truths)
+        nTruths.append(np.sum(match)/match.size)
+        print(f"Epoch {epoch}: Loss={losses[-1]} %Match={nTruths[-1]}")
+        print("  mcc indiv.:",np.array([skm.matthews_corrcoef(truths[:,i],preds[:,i]) for i in range(preds.shape[1])]))
 
     torch.save(KCNQ,fsave)
-
+    # end function
 
 def crossValidation(dataset):
     kf = KFold(n_splits=5, shuffle=True)
@@ -188,22 +225,39 @@ def crossValidation(dataset):
         print("FOLD %d"%(ifold+1))
         trainSet = Subset(dataset, trainIdx)
         validSet = Subset(dataset, validIdx)
-        trainLoader = DataLoader(trainSet, batch_size=64, shuffle=True)
-        validLoader = DataLoader(validSet, batch_size=64, shuffle=True)
+        trainLoader = DataLoader(trainSet, batch_size=bSize, shuffle=True)
+        validLoader = DataLoader(validSet, batch_size=bSize, shuffle=True)
         trainModel(trainLoader, validLoader)
 
 
 ######################################################################
 if __name__ == "__main__":
-    #fig, ax = plt.subplots(2) 
+    
+    start=datetime.now()
+
+    # original data 
     ds = BioData("./orig_data/full.whet.multimer.csv","./orig_data/a1q1.model_data.csv")
 
-    #crossValidation(ds)
+    # test: use different structure 
+    ds = BioData("../../get_feat/7xnk/7xnk_features_orig_vars.csv","../../get_feat/7xnk/7xnk_ep_orig_vars.csv") 
+    ds = BioData("../../get_feat/7xni/7xni_features_orig_vars.csv","../../get_feat/7xni/7xni_ep_orig_vars.csv")
 
-    # after crossValidation, train w/ all data . save trained model. 
-    fsave="temp.pth" 
-    dl = DataLoader(ds, shuffle=True, batch_size=64)
-    trainAll(dl,fsave) 
+     combine structures 
+    ds = BioData("../../get_feat/combo_structures/all_features_orig_vars.csv","../../get_feat/combo_structures/all_ep_orig_vars.csv") 
 
-    #display.plot(ax=ax1,name="precision recall")
-    #plt.show()
+    crossValidation(ds)
+
+    ## after crossValidation, train w/ all data . save trained model. 
+    #fsave="temp.pth"  # "all_model.pth"
+    ##dl = DataLoader(ds, shuffle=True, batch_size=bSize)
+    #trainAll(ds,fsave) 
+
+    end=datetime.now()
+
+    td = (end - start).total_seconds() * 10**3
+    print(f"The time of execution of above program is : {td:.03f}ms")
+
+
+    # inference 
+
+    
