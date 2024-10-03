@@ -31,3 +31,6 @@ Outstanding issues:
 * 240320
 KCNQ1_script.py is updated python script, separate from KCNQ1.ipynb. 
 - Architecure updated , various tests performed 
+
+* 241003
+- Added penetrance-test/ and ikps_only/ folders with scripts to train respective models in each and training/testing data 
