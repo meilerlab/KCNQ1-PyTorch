@@ -13,8 +13,9 @@ I think some major outstanding issues are:
   - not normalizing the output data potentially leading to astronomical losses
   - syntax errors in the k-fold cross validation with generating the train and test splits for each fold
   - I didn't completely figure out the syntax for generating the model that is an average of all of the trained models in the k-fold cross validation
-
-* 231117
+  - 
+------------------------------------
+Update: 231117
 
 KCNQ1_script.py is updated python script, separate from KCNQ1.ipynb. 
 
@@ -28,9 +29,7 @@ Outstanding issues:
 - Update model architecture to predict one (benign/pathogenic) classification per variant. If any of the 4 electrophysiological outputs are classified as dysfunctional, then mutant overall is classified as pathogenic. 
 - Implement transfer learning, recycling 
 
-* 240320
 KCNQ1_script.py is updated python script, separate from KCNQ1.ipynb. 
 - Architecure updated , various tests performed 
-
-* 241003
+- 
 - Added penetrance-test/ and ikps_only/ folders with scripts to train respective models in each and training/testing data 
