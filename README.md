@@ -28,3 +28,8 @@ Outstanding issues:
 
 - Update model architecture to predict one (benign/pathogenic) classification per variant. If any of the 4 electrophysiological outputs are classified as dysfunctional, then mutant overall is classified as pathogenic. 
 - Implement transfer learning, recycling 
+
+KCNQ1_script.py is updated python script, separate from KCNQ1.ipynb. 
+- Architecure updated , various tests performed 
+- 
+- Added penetrance-test/ and ikps_only/ folders with scripts to train respective models in each and training/testing data 
