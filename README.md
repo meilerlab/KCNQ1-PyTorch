@@ -31,5 +31,15 @@ Outstanding issues:
 
 KCNQ1_script.py is updated python script, separate from KCNQ1.ipynb. 
 - Architecure updated , various tests performed 
+<<<<<<< HEAD
+
+* 241003
+- Added penetrance-test/ and ikps_only/ folders with scripts to train respective models in each and training/testing data
+
+* 241104
+- Added fourEP_metrics/ with updated scripts predict the 4 EP metrics with model architecture changes
+- Cutoff for classification for each EP metric is automated. Model now uses features from two cryoEM structures 
+=======
 - 
 - Added penetrance-test/ and ikps_only/ folders with scripts to train respective models in each and training/testing data 
+>>>>>>> 22571ca377f12d72c3e0c0f5fdb75a82834cf326
